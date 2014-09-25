@@ -36,6 +36,7 @@
     "swaggerUi": false,
     "$": false,
     "_": false,
-    "tv4": false
+    "tv4": false,
+    "yaml2": false
   }
 }

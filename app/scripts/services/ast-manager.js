@@ -1,29 +1,30 @@
 'use strict';
 
 /*
-  Manage fold status of the paths and operations
+ * Manages the AST representation of the specs for fold status
+ * and other meta information about the specs tree
 */
-PhonicsApp.service('FoldManager', function FoldManager(Editor, FoldPointFinder) {
-  var buffer = Object.create(null);
+PhonicsApp.service('ASTManager', function ASTManager(Editor) {
+  var ast = null;
   var changeListeners = [];
 
-  Editor.ready(renewBuffer);
+  Editor.ready(renewAST);
 
   /*
-  ** Update buffer with changes from editor
+  ** Update ast with changes from editor
   */
-  function refreshBuffer() {
-    _.defaults(FoldPointFinder.findFolds(Editor.getValue()), buffer);
+  function refreshAST() {
+    _.defaults(yaml2.ast(Editor.getValue()), ast);
     emitChanges();
   }
 
   /*
-  ** Flush buffer and put new value in the buffer
+  ** Flush AST and put new value in it
   */
-  function renewBuffer(value) {
+  function renewAST(value) {
     value = value || Editor.getValue();
     if (angular.isString(value)) {
-      buffer = FoldPointFinder.findFolds(value);
+      ast = yaml2.ast(value);
       emitChanges();
     }
   }
@@ -37,21 +38,26 @@ PhonicsApp.service('FoldManager', function FoldManager(Editor, FoldPointFinder) 
     });
   }
 
-  /*
-  ** Walk the buffer tree for a given path
-  */
-  function walk(keys, current) {
-    current = buffer;
+  function extendSpecs(specs) {
+    renewAST(specs);
+    return ast;
+  }
 
-    if (!Array.isArray(keys) || !keys.length) {
-      throw new Error('Need path for fold in fold buffer');
+  /*
+  ** Walk the ast for a given path
+  */
+  function walk(path, current) {
+    current = ast;
+
+    if (!Array.isArray(path) || !path.length) {
+      throw new Error('Need path for fold in the AST');
     }
 
-    while (keys.length) {
+    while (path.length) {
       if (!current || !current.subFolds) {
         return null;
       }
-      current = current.subFolds[keys.shift()];
+      current = current.subFolds[path.shift()];
     }
 
     return current;
@@ -82,63 +88,31 @@ PhonicsApp.service('FoldManager', function FoldManager(Editor, FoldPointFinder) 
 
     return result;
   }
-
   /*
-  ** Scan the specs tree and extend objects with order value
-  ** We use 'x-row' as an order indication so rendered will ignore it
-  ** because it's a vendor extension
+   * return back line number of an specific node with given path
   */
-  function extendSpecs(specs, path) {
-    var fold = null;
-    var key;
+  function lineForPath (path) {
+    var node = walk(path);
 
-    if (!path) {
-      path = [];
-    } else {
-      path = _.clone(path);
+    if (node) {
+      return node.start.row;
     }
-
-    // Only apply order value to objects
-    if (angular.isObject(specs)) {
-
-      // For each object in this object
-      for (key in specs) {
-
-        // Ignore prototype keys
-        if (specs.hasOwnProperty(key)) {
-
-          // add key to path and try looking up the tree with this path
-          // for the fold corresponding the same object
-          fold = walk(path.concat(key));
-
-          // If fold exists append it to the object and push the key to path
-          if (fold) {
-            specs[key]['x-row'] = fold.start;
-          }
-
-          // Recessively do this until the end of the tree
-          specs[key] = extendSpecs(specs[key], path.concat(key));
-        }
-      }
-    }
-
-    // Return modified object
-    return specs;
+    return null;
   }
 
   /*
-  ** Listen to fold changes in editor and reflect it in buffer
+  ** Listen to fold changes in editor and reflect it in ast
   */
   Editor.onFoldChanged(function (change) {
     var row = change.data.start.row;
     var folded = change.action !== 'remove';
-    var fold = scan(buffer, row);
+    var fold = scan(ast, row);
 
     if (fold) {
       fold.folded = folded;
     }
 
-    refreshBuffer();
+    refreshAST();
     emitChanges();
   });
 
@@ -157,7 +131,7 @@ PhonicsApp.service('FoldManager', function FoldManager(Editor, FoldPointFinder) 
       fold.folded = true;
     }
 
-    refreshBuffer();
+    refreshAST();
   };
 
   /*
@@ -178,7 +152,8 @@ PhonicsApp.service('FoldManager', function FoldManager(Editor, FoldPointFinder) 
   };
 
   // Expose the methods externally
-  this.reset = renewBuffer;
-  this.refresh = refreshBuffer;
+  this.reset = renewAST;
+  this.refresh = refreshAST;
   this.extendSpecs = extendSpecs;
+  this.lineForPath = lineForPath;
 });

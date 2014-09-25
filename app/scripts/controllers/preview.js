@@ -1,6 +1,6 @@
 'use strict';
 
-PhonicsApp.controller('PreviewCtrl', function PreviewCtrl(Storage, Builder, FoldManager, Sorter, Editor, Operation, BackendHealthCheck, $scope) {
+PhonicsApp.controller('PreviewCtrl', function PreviewCtrl(Storage, Builder, ASTManager, Editor, Sorter, Operation, BackendHealthCheck, $scope) {
   function update(latest) {
 
     // If backend is not healthy don't update
@@ -8,12 +8,8 @@ PhonicsApp.controller('PreviewCtrl', function PreviewCtrl(Storage, Builder, Fold
       return;
     }
 
-    var specs = null;
-    var result = null;
-
-    result = Builder.buildDocs(latest, { resolve: true });
-    specs = FoldManager.extendSpecs(result.specs);
-    $scope.specs = Sorter.sort(specs);
+    var result = Builder.buildDocs(latest, { resolve: true });
+    $scope.specs = Sorter.sort(result.specs);
 
     if (result.error) {
       if (result.error.yamlError) {
@@ -30,14 +26,21 @@ PhonicsApp.controller('PreviewCtrl', function PreviewCtrl(Storage, Builder, Fold
 
   Storage.addChangeListener('yaml', update);
 
-  FoldManager.onFoldStatusChanged(function () {
+  ASTManager.onFoldStatusChanged(function () {
     _.defer(function () { $scope.$apply(); });
   });
-  $scope.toggle = FoldManager.toggleFold;
-  $scope.isCollapsed = FoldManager.isFolded;
+  $scope.toggle = ASTManager.toggleFold;
+  $scope.isCollapsed = ASTManager.isFolded;
 
-  $scope.focusEdit = function ($event, line) {
+
+  /*
+   * Focuses editor to a line that represents that path beginning
+   * @param path {array} an array of keys into specs structure
+   * that points out that specific node
+  */
+  $scope.focusEdit = function ($event, path) {
     $event.stopPropagation();
+    var line = ASTManager.
     Editor.gotoLine(line);
   };
 

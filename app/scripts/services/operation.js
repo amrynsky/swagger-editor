@@ -35,7 +35,7 @@ PhonicsApp.service('Operation', function Operation() {
   ** Vendor extensions always start with `x-`
   */
   this.isVendorExtension = function (key) {
-    return key.substring(0, 2).toLowerCase() === 'x-';
+    return angular.isString(key) && key.substring(0, 2).toLowerCase() === 'x-';
   };
 
 });

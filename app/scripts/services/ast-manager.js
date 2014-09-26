@@ -38,26 +38,30 @@ PhonicsApp.service('ASTManager', function ASTManager(Editor) {
     });
   }
 
-  function extendSpecs(specs) {
-    renewAST(specs);
-    return ast;
-  }
-
   /*
-  ** Walk the ast for a given path
+  ** Walk the AST for a given path and return the corresponding node
   */
   function walk(path, current) {
     current = ast;
 
     if (!Array.isArray(path) || !path.length) {
-      throw new Error('Need path for fold in the AST');
+      throw new Error('walk needs a path of the node in the AST');
     }
 
     while (path.length) {
-      if (!current || !current.subFolds) {
-        return null;
+
+      if (!current || !current.constructor) {
+        return current;
       }
-      current = current.subFolds[path.shift()];
+
+      if (current.constructor.name === 'YAMLHash') {
+        current = _.find(current.keys, {keyName: path.shift()});
+      } else if (current.constructor.name === 'YAMLList') {
+        current = _.find(current.items, path.shift());
+      } else {
+        return current;
+      }
+
     }
 
     return current;
@@ -91,7 +95,7 @@ PhonicsApp.service('ASTManager', function ASTManager(Editor) {
   /*
    * return back line number of an specific node with given path
   */
-  function lineForPath (path) {
+  function lineForPath(path) {
     var node = walk(path);
 
     if (node) {
@@ -154,6 +158,5 @@ PhonicsApp.service('ASTManager', function ASTManager(Editor) {
   // Expose the methods externally
   this.reset = renewAST;
   this.refresh = refreshAST;
-  this.extendSpecs = extendSpecs;
   this.lineForPath = lineForPath;
 });

@@ -32,7 +32,6 @@ PhonicsApp.controller('PreviewCtrl', function PreviewCtrl(Storage, Builder, ASTM
   $scope.toggle = ASTManager.toggleFold;
   $scope.isCollapsed = ASTManager.isFolded;
 
-
   /*
    * Focuses editor to a line that represents that path beginning
    * @param path {array} an array of keys into specs structure
@@ -40,7 +39,7 @@ PhonicsApp.controller('PreviewCtrl', function PreviewCtrl(Storage, Builder, ASTM
   */
   $scope.focusEdit = function ($event, path) {
     $event.stopPropagation();
-    var line = ASTManager.
+    var line = ASTManager.lineForPath(path);
     Editor.gotoLine(line);
   };
 
